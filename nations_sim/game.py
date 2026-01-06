@@ -68,7 +68,7 @@ class Game:
             print(f"{'='*60}")
 
             # Log dans le journal
-            self.ui.add_to_journal(self.turn_number, f"--- Tour {self.turn_number} ---", (200, 200, 200))
+            self.ui.add_to_journal(self.turn_number, f"--- Tour {self.turn_number} ---", (200, 200, 200), "internal")
 
             # Mélange l'ordre des nations (équité)
             nations = self.world.get_alive_nations()
@@ -121,7 +121,7 @@ class Game:
 
         # Log dans le journal
         thinking_text = f"{nation.name} réfléchit..."
-        self.ui.add_to_journal(self.turn_number, thinking_text, (150, 150, 150))
+        self.ui.add_to_journal(self.turn_number, thinking_text, (150, 150, 150), "internal")
 
         def think():
             """
@@ -214,7 +214,19 @@ class Game:
             log_text += f" → {target_name}"
         log_text += f" ({reason})"
 
-        self.ui.add_to_journal(self.turn_number, log_text, nation.color)
+        # Détermine la catégorie selon l'action
+        category_map = {
+            "attack": "war",
+            "ally": "diplomacy",
+            "trade": "economy",
+            "expand": "expansion",
+            "build_army": "internal",
+            "defend": "internal",
+            "nothing": "internal"
+        }
+        category = category_map.get(action, "internal")
+
+        self.ui.add_to_journal(self.turn_number, log_text, nation.color, category)
 
         # Exécute selon l'action
         if action == "attack":
@@ -252,7 +264,7 @@ class Game:
         target = self.world.get_nation_by_name(target_name)
         if not target or not target.is_alive:
             result_text = f"❌ Cible invalide: {target_name} n'existe pas ou est morte"
-            self.ui.add_to_journal(self.turn_number, result_text, (255, 100, 100))
+            self.ui.add_to_journal(self.turn_number, result_text, (255, 100, 100), "war")
             return
 
         # Exécute l'attaque
@@ -274,12 +286,12 @@ class Game:
             self.recent_events[attacker.name] = f"Ton attaque contre {target.name} a échoué"
             self.recent_events[target.name] = f"Tu as repoussé l'attaque de {attacker.name}"
 
-        self.ui.add_to_journal(self.turn_number, result_text, color)
+        self.ui.add_to_journal(self.turn_number, result_text, color, "war")
 
         # Si le défenseur est mort
         if not target.is_alive:
             death_text = f"💀 {target.name} a été éliminé par {attacker.name}!"
-            self.ui.add_to_journal(self.turn_number, death_text, (255, 50, 50))
+            self.ui.add_to_journal(self.turn_number, death_text, (255, 50, 50), "war")
 
     def _action_ally(self, nation, target_name, reason):
         """
@@ -303,14 +315,14 @@ class Game:
             target.change_relation(nation.name, 50)
 
             result_text = f"🤝 {nation.name} et {target_name} forment une alliance!"
-            self.ui.add_to_journal(self.turn_number, result_text, (100, 255, 255))
+            self.ui.add_to_journal(self.turn_number, result_text, (100, 255, 255), "diplomacy")
 
             self.recent_events[nation.name] = f"{target_name} a accepté ton alliance"
             self.recent_events[target_name] = f"{nation.name} te propose une alliance (acceptée)"
         else:
             # Alliance refusée
             result_text = f"❌ {target_name} refuse l'alliance avec {nation.name}"
-            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200))
+            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200), "diplomacy")
 
             self.recent_events[nation.name] = f"{target_name} a refusé ton alliance"
 
@@ -337,7 +349,7 @@ class Game:
         target.change_relation(nation.name, 10)
 
         result_text = f"💰 {nation.name} commerce avec {target_name} (+{gold_gain} or chacun)"
-        self.ui.add_to_journal(self.turn_number, result_text, (255, 215, 0))
+        self.ui.add_to_journal(self.turn_number, result_text, (255, 215, 0), "economy")
 
         self.recent_events[nation.name] = f"Tu as commercé avec {target_name}"
         self.recent_events[target_name] = f"{nation.name} a commercé avec toi"
@@ -357,12 +369,12 @@ class Game:
             nation.army = min(100, nation.army)  # Max 100
 
             result_text = f"⚔️ {nation.name} recrute des troupes (+20 armée)"
-            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 255))
+            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 255), "internal")
 
             self.recent_events[nation.name] = "Tu as renforcé ton armée"
         else:
             result_text = f"❌ {nation.name} n'a pas assez d'or pour recruter"
-            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200))
+            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200), "internal")
 
     def _action_defend(self, nation, reason):
         """
@@ -375,7 +387,7 @@ class Game:
         nation.defense_bonus = 20
 
         result_text = f"🛡️ {nation.name} fortifie ses défenses (+20 défense)"
-        self.ui.add_to_journal(self.turn_number, result_text, (150, 150, 255))
+        self.ui.add_to_journal(self.turn_number, result_text, (150, 150, 255), "internal")
 
         self.recent_events[nation.name] = "Tu as fortifié tes défenses"
 
@@ -399,12 +411,12 @@ class Game:
             self.world._set_territory(x, y, nation)
 
             result_text = f"🗺️ {nation.name} s'étend vers ({x},{y})"
-            self.ui.add_to_journal(self.turn_number, result_text, (100, 255, 100))
+            self.ui.add_to_journal(self.turn_number, result_text, (100, 255, 100), "expansion")
 
             self.recent_events[nation.name] = f"Tu as conquis un territoire vide en ({x},{y})"
         else:
             result_text = f"⚠️ {nation.name} ne peut pas s'étendre (pas de case vide adjacente)"
-            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200))
+            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200), "expansion")
 
     def _update_economy(self):
         """
@@ -427,7 +439,7 @@ class Game:
             self.winner = winner
 
             victory_text = f"🏆 {winner.name} a gagné la partie!"
-            self.ui.add_to_journal(self.turn_number, victory_text, (255, 215, 0))
+            self.ui.add_to_journal(self.turn_number, victory_text, (255, 215, 0), "internal")
             print(f"\n{'='*60}")
             print(f"🏆 VICTOIRE: {winner.name} a gagné!")
             print(f"{'='*60}")
@@ -445,8 +457,8 @@ if __name__ == "__main__":
 
     # Mock UI simple pour le test
     class MockUI:
-        def add_to_journal(self, turn, text, color):
-            print(f"[Tour {turn}] {text}")
+        def add_to_journal(self, turn, text, color, category="internal"):
+            print(f"[Tour {turn}] [{category}] {text}")
 
     # Crée le monde
     world = World()

@@ -46,8 +46,18 @@ class GameUI:
 
         # État de l'interface
         self.selected_nation = None  # Nation sélectionnée (clic)
-        self.journal = []  # Liste des événements [(tour, texte, couleur), ...]
+        self.journal = []  # Liste des événements [(tour, texte, couleur, catégorie), ...]
         self.max_journal_lines = 20  # Nombre max de lignes affichées
+
+        # Système de filtrage du journal
+        self.journal_filter = "all"  # "all", "war", "diplomacy", "economy", "expansion", "internal"
+        self.journal_categories = {
+            "war": "⚔️",
+            "diplomacy": "🤝",
+            "economy": "💰",
+            "expansion": "🗺️",
+            "internal": "🏛️"
+        }
 
         # État des boutons
         self.paused = False
@@ -58,20 +68,21 @@ class GameUI:
         self.journal_rect = pygame.Rect(WORLD_WIDTH * CELL_SIZE + 30, 60, 360, WORLD_HEIGHT * CELL_SIZE)
         self.info_rect = pygame.Rect(10, WORLD_HEIGHT * CELL_SIZE + 80, WINDOW_WIDTH - 20, 150)
 
-    def add_to_journal(self, turn, text, color=(255, 255, 255)):
+    def add_to_journal(self, turn, text, color=(255, 255, 255), category="internal"):
         """
-        Ajoute un événement au journal.
+        Ajoute un événement au journal avec une catégorie.
 
         Args:
             turn (int): Numéro du tour
             text (str): Description de l'événement
             color (tuple): Couleur du texte RGB
+            category (str): Catégorie de l'événement ("war", "diplomacy", "economy", "expansion", "internal")
         """
-        self.journal.append((turn, text, color))
+        self.journal.append((turn, text, color, category))
 
         # Limite le nombre de lignes (garde seulement les plus récentes)
-        if len(self.journal) > 50:  # Garde 50 dans la mémoire
-            self.journal = self.journal[-50:]
+        if len(self.journal) > 100:  # Garde 100 dans la mémoire
+            self.journal = self.journal[-100:]
 
     def draw(self, turn_number):
         """
@@ -181,7 +192,7 @@ class GameUI:
 
     def _draw_journal(self):
         """
-        Dessine le journal des événements (à droite de la carte).
+        Dessine le journal des événements (à droite de la carte) avec filtres.
         """
         # Fond du journal
         pygame.draw.rect(self.screen, self.COLOR_PANEL, self.journal_rect)
@@ -191,19 +202,69 @@ class GameUI:
         title = self.font_medium.render("📜 JOURNAL", True, self.COLOR_TEXT)
         self.screen.blit(title, (self.journal_rect.x + 10, self.journal_rect.y + 10))
 
+        # Boutons de filtre (en haut du journal)
+        button_y = self.journal_rect.y + 40
+        button_x = self.journal_rect.x + 10
+
+        filters = [
+            ("Tous", "all"),
+            ("⚔️", "war"),
+            ("🤝", "diplomacy"),
+            ("💰", "economy"),
+            ("🗺️", "expansion")
+        ]
+
+        mouse_pos = pygame.mouse.get_pos()
+
+        for i, (label, filter_name) in enumerate(filters):
+            btn_x = button_x + i * 65
+            btn_rect = pygame.Rect(btn_x, button_y, 60, 25)
+
+            # Couleur si actif ou survol
+            if self.journal_filter == filter_name:
+                color = (70, 130, 180)  # Actif (bleu)
+            elif btn_rect.collidepoint(mouse_pos):
+                color = (60, 80, 100)  # Survol
+            else:
+                color = (50, 50, 60)  # Inactif
+
+            # Dessine le bouton
+            pygame.draw.rect(self.screen, color, btn_rect, border_radius=3)
+            pygame.draw.rect(self.screen, self.COLOR_BORDER, btn_rect, 1, border_radius=3)
+
+            # Texte du bouton
+            text = self.font_small.render(label, True, (255, 255, 255))
+            text_rect = text.get_rect(center=btn_rect.center)
+            self.screen.blit(text, text_rect)
+
         # Ligne de séparation
         pygame.draw.line(
             self.screen, self.COLOR_BORDER,
-            (self.journal_rect.x + 10, self.journal_rect.y + 40),
-            (self.journal_rect.right - 10, self.journal_rect.y + 40),
+            (self.journal_rect.x + 10, self.journal_rect.y + 75),
+            (self.journal_rect.right - 10, self.journal_rect.y + 75),
             1
         )
 
-        # Affiche les derniers événements (du plus récent au plus ancien)
-        y_offset = self.journal_rect.y + 50
-        for i, (turn, text, color) in enumerate(reversed(self.journal[-self.max_journal_lines:])):
+        # Filtre les événements selon la catégorie sélectionnée
+        filtered_journal = self.journal
+        if self.journal_filter != "all":
+            filtered_journal = [
+                entry for entry in self.journal
+                if len(entry) >= 4 and entry[3] == self.journal_filter
+            ]
+
+        # Affiche les derniers événements filtrés (du plus récent au plus ancien)
+        y_offset = self.journal_rect.y + 85
+        for entry in reversed(filtered_journal[-self.max_journal_lines:]):
             if y_offset > self.journal_rect.bottom - 30:
                 break
+
+            # Extraction des données (gère les anciens formats sans catégorie)
+            if len(entry) >= 4:
+                turn, text, color, category = entry
+            else:
+                turn, text, color = entry
+                category = "internal"
 
             # Texte de l'événement
             event_text = f"[T{turn}] {text}"
@@ -315,6 +376,28 @@ class GameUI:
         if WINDOW_WIDTH - 130 <= x <= WINDOW_WIDTH - 20 and 10 <= y <= 40:
             return "quit"
 
+        # Clics sur les filtres du journal
+        if self.journal_rect.collidepoint(pos):
+            y_rel = y - self.journal_rect.y
+            # Zone des boutons de filtre (y entre 40 et 65)
+            if 40 <= y_rel <= 65:
+                x_rel = x - self.journal_rect.x - 10
+                if 0 <= x_rel < 60:
+                    self.journal_filter = "all"
+                    return None
+                elif 65 <= x_rel < 125:
+                    self.journal_filter = "war"
+                    return None
+                elif 130 <= x_rel < 190:
+                    self.journal_filter = "diplomacy"
+                    return None
+                elif 195 <= x_rel < 255:
+                    self.journal_filter = "economy"
+                    return None
+                elif 260 <= x_rel < 320:
+                    self.journal_filter = "expansion"
+                    return None
+
         # Clic sur la carte
         if self.map_rect.collidepoint(pos):
             # Calcule les coordonnées de la case
@@ -357,10 +440,12 @@ if __name__ == "__main__":
     ui = GameUI(world)
 
     # Ajoute quelques événements de test au journal
-    ui.add_to_journal(1, "Empire Rouge attaque République Verte!", (255, 100, 100))
-    ui.add_to_journal(1, "Bataille gagnée! Territoire conquis.", (100, 255, 100))
-    ui.add_to_journal(2, "Royaume Bleu propose alliance à Sultanat Jaune", (100, 100, 255))
-    ui.add_to_journal(2, "Alliance acceptée!", (100, 255, 255))
+    ui.add_to_journal(1, "Empire Rouge attaque République Verte!", (255, 100, 100), "war")
+    ui.add_to_journal(1, "Bataille gagnée! Territoire conquis.", (100, 255, 100), "war")
+    ui.add_to_journal(2, "Royaume Bleu propose alliance à Sultanat Jaune", (100, 100, 255), "diplomacy")
+    ui.add_to_journal(2, "Alliance acceptée!", (100, 255, 255), "diplomacy")
+    ui.add_to_journal(3, "Commerce entre nations", (255, 215, 0), "economy")
+    ui.add_to_journal(3, "Expansion territoriale", (100, 255, 100), "expansion")
 
     # Boucle de test
     running = True
