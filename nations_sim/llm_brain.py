@@ -1,7 +1,10 @@
+# -*- coding: utf-8 -*-
 # Communication avec Ollama (le cerveau LLM des nations)
+# VERSION CORRIGÉE avec parsing JSON robuste
 
 import requests
 import json
+import re  # Pour extraction regex si JSON incomplet
 from config import OLLAMA_URL, LLM_MODEL, LLM_TEMPERATURE
 from prompts import SYSTEM_PROMPT
 
@@ -27,7 +30,7 @@ class LLMBrain:
         try:
             response = requests.get(f"{self.url}/api/tags", timeout=5)
             return response.status_code == 200
-        except requests.exceptions.RequestException:
+        except:
             return False
 
     def ask_decision(self, prompt):
@@ -52,11 +55,11 @@ class LLMBrain:
                 }
             }
 
-            # Envoi de la requête
+            # Envoi de la requête (timeout augmenté à 60s pour les PCs lents)
             response = requests.post(
                 f"{self.url}/api/generate",
                 json=payload,
-                timeout=30  # 30 secondes max par décision
+                timeout=60
             )
 
             if response.status_code != 200:
@@ -67,9 +70,7 @@ class LLMBrain:
             result = response.json()
             llm_response = result.get("response", "").strip()
 
-            # Tentative de parser le JSON
-            # Le LLM devrait renvoyer quelque chose comme:
-            # {"action": "attack", "target": "Empire Rouge", "reason": "Ils sont faibles"}
+            # Tentative de parser le JSON (avec plusieurs méthodes)
             decision = self._parse_json_response(llm_response)
 
             return decision
@@ -77,17 +78,15 @@ class LLMBrain:
         except requests.exceptions.Timeout:
             print("⏱️ Timeout: Ollama met trop de temps à répondre")
             return None
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Erreur de connexion à Ollama: {e}")
-            return None
         except Exception as e:
-            print(f"❌ Erreur inattendue: {e}")
+            print(f"❌ Erreur LLM: {e}")
             return None
 
     def _parse_json_response(self, text):
         """
         Parse la réponse du LLM pour extraire le JSON.
-        Gère les cas où le LLM ajoute du texte avant/après le JSON.
+        Gère les cas où le LLM ajoute du texte avant/après le JSON,
+        ou quand le JSON est incomplet.
 
         Args:
             text (str): La réponse brute du LLM
@@ -95,24 +94,54 @@ class LLMBrain:
         Returns:
             dict: Le JSON parsé, ou None si impossible
         """
-        try:
-            # Cas 1: Le texte est directement du JSON valide
-            return json.loads(text)
-        except json.JSONDecodeError:
-            # Cas 2: Le JSON est enrobé de texte, on essaie de l'extraire
-            try:
-                # Cherche le premier { et le dernier }
-                start = text.find('{')
-                end = text.rfind('}') + 1
-                if start != -1 and end > start:
-                    json_str = text[start:end]
-                    return json.loads(json_str)
-            except json.JSONDecodeError:
-                pass
+        text = text.strip()
 
-            # Cas 3: Impossible de parser
-            print(f"⚠️ Réponse LLM non-JSON: {text[:100]}...")
+        # MÉTHODE 1: Essai direct
+        try:
+            return json.loads(text)
+        except:
+            pass
+
+        # MÉTHODE 2: Cherche le JSON dans le texte
+        start = text.find('{')
+        if start == -1:
             return None
+
+        json_part = text[start:]
+
+        # FIX BUG 1: Si JSON incomplet (manque le }), on l'ajoute
+        if json_part.count('{') > json_part.count('}'):
+            json_part = json_part + '}'
+
+        end = json_part.rfind('}') + 1
+        json_str = json_part[:end]
+
+        # Nettoie les retours à la ligne qui cassent parfois le JSON
+        json_str = json_str.replace('\n', ' ').replace('\r', '')
+
+        try:
+            return json.loads(json_str)
+        except:
+            pass
+
+        # MÉTHODE 3: Extraction manuelle avec regex (dernier recours)
+        try:
+            action_match = re.search(r'"action"\s*:\s*"([^"]+)"', text)
+            target_match = re.search(r'"target"\s*:\s*"([^"]*)"', text)
+            reason_match = re.search(r'"reason"\s*:\s*"([^"]+)"', text)
+
+            if action_match:
+                return {
+                    "action": action_match.group(1),
+                    "target": target_match.group(1) if target_match else None,
+                    "reason": reason_match.group(1) if reason_match else "Aucune raison"
+                }
+        except:
+            pass
+
+        # Si tout échoue
+        print(f"⚠️ Impossible de parser la réponse LLM: {text[:100]}...")
+        return None
 
     def validate_decision(self, decision):
         """

@@ -50,7 +50,7 @@ Ta personnalité: {nation.personality_description}
 === SITUATION ACTUELLE ===
 - Ton armée: {nation.army}/100
 - Ton or: {nation.gold}
-- Tes territoires: {nation.territories}
+- Tes territoires: {nation.get_territory_count()}
 - Tour actuel: {world_state['turn']}
 
 === TES VOISINS PROCHES ===
