@@ -232,6 +232,9 @@ class Game:
         elif action == "defend":
             self._action_defend(nation, reason)
 
+        elif action == "expand":
+            self._action_expand(nation, reason)
+
         elif action == "nothing":
             # Ne rien faire (économie d'or)
             pass
@@ -375,6 +378,33 @@ class Game:
         self.ui.add_to_journal(self.turn_number, result_text, (150, 150, 255))
 
         self.recent_events[nation.name] = "Tu as fortifié tes défenses"
+
+    def _action_expand(self, nation, reason):
+        """
+        Conquête d'une case vide adjacente (expansion territoriale).
+        GRATUIT et sans risque - permet de grandir sans guerre.
+
+        Args:
+            nation (Nation): Nation qui s'étend
+            reason (str): Raison de l'expansion
+        """
+        # Trouve les cases vides adjacentes
+        empty_cells = self.world.get_adjacent_empty_cells(nation)
+
+        if empty_cells:
+            # Choisit une case aléatoire
+            x, y = random.choice(empty_cells)
+
+            # Conquiert la case
+            self.world._set_territory(x, y, nation)
+
+            result_text = f"🗺️ {nation.name} s'étend vers ({x},{y})"
+            self.ui.add_to_journal(self.turn_number, result_text, (100, 255, 100))
+
+            self.recent_events[nation.name] = f"Tu as conquis un territoire vide en ({x},{y})"
+        else:
+            result_text = f"⚠️ {nation.name} ne peut pas s'étendre (pas de case vide adjacente)"
+            self.ui.add_to_journal(self.turn_number, result_text, (200, 200, 200))
 
     def _update_economy(self):
         """

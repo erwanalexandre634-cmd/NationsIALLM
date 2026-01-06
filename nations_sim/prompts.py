@@ -5,7 +5,7 @@ Tu dois prendre UNE décision par tour.
 Réponds UNIQUEMENT en JSON valide, sans texte avant ou après.
 Format exact attendu:
 {
-  "action": "attack/ally/trade/build_army/defend/nothing",
+  "action": "attack/ally/trade/build_army/defend/expand/nothing",
   "target": "nom_exact_de_la_nation ou null",
   "reason": "ta justification en maximum 15 mots"
 }"""
@@ -78,6 +78,7 @@ Ta personnalité: {nation.personality_description}
 - "trade": Commercer avec une nation (tu gagnes de l'or, l'autre aussi)
 - "build_army": Recruter des troupes (coûte de l'or)
 - "defend": Fortifier tes frontières (+ défense au prochain tour)
+- "expand": Conquérir une case vide adjacente à ton territoire (GRATUIT et sans risque)
 - "nothing": Attendre et économiser
 
 Que décides-tu? Réponds UNIQUEMENT en JSON:

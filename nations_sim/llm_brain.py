@@ -163,7 +163,7 @@ class LLMBrain:
             return False
 
         # Vérification que l'action est valide
-        valid_actions = ["attack", "ally", "trade", "build_army", "defend", "nothing"]
+        valid_actions = ["attack", "ally", "trade", "build_army", "defend", "expand", "nothing"]
         if decision["action"] not in valid_actions:
             print(f"⚠️ Action invalide: {decision['action']}")
             return False

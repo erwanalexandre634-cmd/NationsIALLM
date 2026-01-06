@@ -67,63 +67,56 @@ class World:
 
     def _place_nations_on_map(self):
         """
-        Place chaque nation sur la carte avec plusieurs territoires contigus.
+        Place les 6 nations en grille 3x2 au CENTRE de la carte, COLLÉES ensemble.
 
-        FIX BUG 2: Les nations sont maintenant placées en GRILLE 2x3 pour garantir
-        qu'elles sont adjacentes les unes aux autres.
+        Disposition garantie adjacente :
+        +-------+-------+-------+
+        |   0   |   1   |   2   |
+        | Rouge | Vert  | Bleu  |
+        +-------+-------+-------+
+        |   3   |   4   |   5   |
+        | Jaune |Violet |Orange |
+        +-------+-------+-------+
 
-        Disposition:
-        +--------+--------+--------+
-        | Nation | Nation | Nation |
-        |   0    |   1    |   2    |
-        +--------+--------+--------+
-        | Nation | Nation | Nation |
-        |   3    |   4    |   5    |
-        +--------+--------+--------+
+        Chaque nation occupe un bloc de 5x6 cases, SANS ESPACES entre elles.
+        Toutes les nations ont au moins 2 voisins garantis.
         """
-        territories_per_nation = 12  # Augmenté pour bien remplir chaque région
+        # Configuration de la grille
+        grid_cols = 3  # 3 nations en largeur
+        grid_rows = 2  # 2 nations en hauteur
+        nation_width = 5  # Chaque nation = 5 cases de large
+        nation_height = 6  # Chaque nation = 6 cases de haut
 
-        # Définit les régions pour chaque nation (grille 2x3)
-        # Carte 20x15 divisée en 6 régions de ~7x7
-        regions = [
-            (0, 0, 7, 7),      # Nation 0: Top-left
-            (7, 0, 14, 7),     # Nation 1: Top-center
-            (14, 0, 20, 7),    # Nation 2: Top-right
-            (0, 7, 7, 15),     # Nation 3: Bottom-left
-            (7, 7, 14, 15),    # Nation 4: Bottom-center
-            (14, 7, 20, 15),   # Nation 5: Bottom-right
-        ]
+        # Calcule la taille totale et le décalage pour centrer
+        total_width = grid_cols * nation_width  # 15 cases
+        total_height = grid_rows * nation_height  # 12 cases
 
+        start_x = (self.width - total_width) // 2  # Centre horizontal (~2)
+        start_y = (self.height - total_height) // 2  # Centre vertical (~1)
+
+        print(f"   Placement des nations centrées: position ({start_x}, {start_y})")
+
+        # Place chaque nation dans son bloc (TOUT le bloc, pas de trous)
         for i, nation in enumerate(self.nations):
-            if i >= len(regions):
-                break  # Sécurité si plus de 6 nations
+            if i >= 6:  # Sécurité
+                break
 
-            x_min, y_min, x_max, y_max = regions[i]
+            # Calcule la position du bloc
+            col = i % grid_cols  # 0, 1, 2, 0, 1, 2
+            row = i // grid_cols  # 0, 0, 0, 1, 1, 1
 
-            # Place un seed au centre de la région
-            seed_x = (x_min + x_max) // 2
-            seed_y = (y_min + y_max) // 2
-            self._set_territory(seed_x, seed_y, nation)
+            x_start = start_x + col * nation_width
+            y_start = start_y + row * nation_height
 
-            # Fait grandir le territoire dans la région
-            for _ in range(territories_per_nation - 1):
-                # Trouve une case adjacente libre DANS LA RÉGION
-                new_territory = self._find_adjacent_free_cell_in_region(
-                    nation, x_min, y_min, x_max, y_max
-                )
-                if new_territory:
-                    x, y = new_territory
-                    self._set_territory(x, y, nation)
-                else:
-                    # Si plus de place adjacente, place aléatoirement dans la région
-                    attempts = 0
-                    while attempts < 20:
-                        rand_x = random.randint(x_min, x_max - 1)
-                        rand_y = random.randint(y_min, y_max - 1)
-                        if self.world_map[rand_x][rand_y] is None:
-                            self._set_territory(rand_x, rand_y, nation)
-                            break
-                        attempts += 1
+            # Remplit TOUT le bloc (garantit que les nations se touchent)
+            territory_count = 0
+            for x in range(x_start, x_start + nation_width):
+                for y in range(y_start, y_start + nation_height):
+                    if 0 <= x < self.width and 0 <= y < self.height:
+                        self._set_territory(x, y, nation)
+                        territory_count += 1
+
+            print(f"   - {nation.name}: {territory_count} territoires placés")
 
     def _set_territory(self, x, y, nation):
         """
@@ -232,6 +225,30 @@ class World:
             if nation.name == name:
                 return nation
         return None
+
+    def get_adjacent_empty_cells(self, nation):
+        """
+        Retourne les cases VIDES adjacentes aux territoires de la nation.
+        Utile pour l'action "expand" (conquête du vide).
+
+        Args:
+            nation (Nation): La nation
+
+        Returns:
+            list: Liste de tuples (x, y) des cases vides adjacentes
+        """
+        empty_cells = set()  # Utilise un set pour éviter les doublons
+
+        for tx, ty in nation.territories:
+            # Regarde les 4 voisins
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = tx + dx, ty + dy
+                # Vérifie que c'est dans les limites ET que c'est vide
+                if 0 <= nx < self.width and 0 <= ny < self.height:
+                    if self.world_map[nx][ny] is None:
+                        empty_cells.add((nx, ny))
+
+        return list(empty_cells)
 
     def get_neighboring_nations(self, nation):
         """
