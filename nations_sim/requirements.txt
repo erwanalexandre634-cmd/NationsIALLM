@@ -1,0 +1,4 @@
+# Dépendances Python pour Nations AI Simulator
+
+requests>=2.31.0  # Pour communiquer avec Ollama
+pygame>=2.5.0     # Pour l'interface graphique (on l'utilisera à l'étape 2)
