@@ -63,6 +63,9 @@ class GameUI:
         self.paused = False
         self.speed = 1  # 1, 2, ou 5
 
+        # Système de notifications popup
+        self.notifications = []  # Liste de {'text': str, 'time': float, 'color': tuple}
+
         # Zones de l'interface
         self.map_rect = pygame.Rect(10, 60, WORLD_WIDTH * CELL_SIZE, WORLD_HEIGHT * CELL_SIZE)
         self.journal_rect = pygame.Rect(WORLD_WIDTH * CELL_SIZE + 30, 60, 360, WORLD_HEIGHT * CELL_SIZE)
@@ -84,6 +87,21 @@ class GameUI:
         if len(self.journal) > 100:  # Garde 100 dans la mémoire
             self.journal = self.journal[-100:]
 
+    def add_notification(self, text, duration=3, color=(255, 255, 255)):
+        """
+        Ajoute une notification popup temporaire.
+
+        Args:
+            text (str): Texte de la notification
+            duration (int): Durée d'affichage en secondes
+            color (tuple): Couleur du texte RGB
+        """
+        self.notifications.append({
+            'text': text,
+            'time': duration,
+            'color': color
+        })
+
     def draw(self, turn_number):
         """
         Dessine toute l'interface.
@@ -99,6 +117,7 @@ class GameUI:
         self._draw_map()
         self._draw_journal()
         self._draw_info_panel()
+        self._draw_notifications()
 
         # Met à jour l'affichage
         pygame.display.flip()
@@ -384,6 +403,50 @@ class GameUI:
             msg = self.font_medium.render("Cliquez sur la carte pour sélectionner une nation", True, (150, 150, 150))
             msg_rect = msg.get_rect(center=self.info_rect.center)
             self.screen.blit(msg, msg_rect)
+
+    def _draw_notifications(self):
+        """
+        Affiche les notifications popup temporaires en haut à droite.
+        Les notifications s'affichent pendant quelques secondes puis disparaissent.
+        """
+        y = 60  # Commence juste en dessous de l'en-tête
+        to_remove = []
+
+        for i, notif in enumerate(self.notifications):
+            # Prépare le texte
+            text_surf = self.font_medium.render(notif['text'], True, notif['color'])
+            text_rect = text_surf.get_rect()
+
+            # Position en haut à droite
+            bg_rect = pygame.Rect(
+                WINDOW_WIDTH - text_rect.width - 40,
+                y,
+                text_rect.width + 30,
+                40
+            )
+
+            # Fond semi-transparent
+            bg_surf = pygame.Surface((bg_rect.width, bg_rect.height))
+            bg_surf.set_alpha(200)
+            bg_surf.fill((40, 40, 50))
+            self.screen.blit(bg_surf, bg_rect.topleft)
+
+            # Bordure colorée
+            pygame.draw.rect(self.screen, notif['color'], bg_rect, 2, border_radius=5)
+
+            # Texte centré
+            self.screen.blit(text_surf, (bg_rect.x + 15, bg_rect.y + 10))
+
+            # Décrémente le temps (appelé 60 fois par seconde)
+            notif['time'] -= 1/60
+            if notif['time'] <= 0:
+                to_remove.append(i)
+
+            y += 50  # Espace pour la notification suivante
+
+        # Supprime les notifications expirées (en ordre inverse pour éviter les décalages d'index)
+        for i in reversed(to_remove):
+            self.notifications.pop(i)
 
     def handle_click(self, pos):
         """

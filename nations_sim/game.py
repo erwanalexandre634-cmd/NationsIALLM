@@ -288,10 +288,15 @@ class Game:
 
         self.ui.add_to_journal(self.turn_number, result_text, color, "war")
 
+        # Notification pour l'attaque
+        if result['success']:
+            self.ui.add_notification(f"⚔️ {attacker.name} attaque {target.name}!", 4, (255, 100, 100))
+
         # Si le défenseur est mort
         if not target.is_alive:
             death_text = f"💀 {target.name} a été éliminé par {attacker.name}!"
             self.ui.add_to_journal(self.turn_number, death_text, (255, 50, 50), "war")
+            self.ui.add_notification(f"💀 {target.name} éliminé!", 5, (255, 50, 50))
 
     def _action_ally(self, nation, target_name, reason):
         """
@@ -316,6 +321,7 @@ class Game:
 
             result_text = f"🤝 {nation.name} et {target_name} forment une alliance!"
             self.ui.add_to_journal(self.turn_number, result_text, (100, 255, 255), "diplomacy")
+            self.ui.add_notification(f"🤝 {nation.name} & {target_name} s'allient!", 4, (100, 255, 255))
 
             self.recent_events[nation.name] = f"{target_name} a accepté ton alliance"
             self.recent_events[target_name] = f"{nation.name} te propose une alliance (acceptée)"
@@ -440,6 +446,7 @@ class Game:
 
             victory_text = f"🏆 {winner.name} a gagné la partie!"
             self.ui.add_to_journal(self.turn_number, victory_text, (255, 215, 0), "internal")
+            self.ui.add_notification(f"🏆 {winner.name} GAGNE!", 10, (255, 215, 0))
             print(f"\n{'='*60}")
             print(f"🏆 VICTOIRE: {winner.name} a gagné!")
             print(f"{'='*60}")
@@ -459,6 +466,9 @@ if __name__ == "__main__":
     class MockUI:
         def add_to_journal(self, turn, text, color, category="internal"):
             print(f"[Tour {turn}] [{category}] {text}")
+
+        def add_notification(self, text, duration=3, color=(255, 255, 255)):
+            print(f"[NOTIFICATION] {text}")
 
     # Crée le monde
     world = World()
