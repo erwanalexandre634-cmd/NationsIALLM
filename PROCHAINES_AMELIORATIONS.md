@@ -8,6 +8,10 @@ Ce guide détaille les améliorations restantes à implémenter pour rendre le j
 - [x] **Nations adjacentes** - Grille 3x2 collée garantie
 - [x] **Conquête du vide** - Action "expand" implémentée
 - [x] **README propre** - Documentation claire
+- [x] **Journal avec filtres** - 5 catégories cliquables (⚔️🤝💰🗺️🏛️)
+- [x] **Prompt immersif** - Raisons contextuelles et narratives
+- [x] **Légende carte** - Nations avec couleurs et territoires
+- [x] **Notifications popup** - Événements importants en temps réel
 
 ---
 
@@ -429,4 +433,45 @@ python main.py
 
 ---
 
-**Bon développement ! 🚀**
+## 🎉 Session de Développement Complétée
+
+### Améliorations Implémentées (2h de dev)
+
+**1. Journal avec Filtres ✅**
+- 5 boutons de filtrage cliquables (Tous, ⚔️Guerre, 🤝Diplo, 💰Éco, 🗺️Expansion)
+- Catégorisation automatique de tous les événements
+- Filtrage en temps réel avec highlight du filtre actif
+- Rétrocompatibilité avec anciens événements
+
+**2. Prompt LLM Immersif ✅**
+- SYSTEM_PROMPT enrichi avec exemples concrets
+- 5 exemples de bonnes raisons contextuelles
+- 4 exemples de mauvaises raisons à éviter
+- Longueur augmentée à 10-20 mots pour plus de détails
+
+**3. Légende de la Carte ✅**
+- Affichage dynamique des nations vivantes
+- Carré coloré + nom + nombre de territoires
+- Position en bas à gauche de la carte
+- Mise à jour automatique quand une nation est éliminée
+
+**4. Notifications Popup ✅**
+- Système de notifications temporaires en haut à droite
+- Notifications pour: attaques, éliminations, alliances, victoire
+- Fond semi-transparent avec bordure colorée
+- Durées personnalisées (3-10 secondes)
+- Disparition automatique et empilage vertical
+
+### Résultat Final
+
+Le jeu est maintenant **beaucoup plus lisible et agréable**:
+- ✅ Journal organisé et filtrable
+- ✅ Raisons IA plus narratives et immersives
+- ✅ Événements importants visibles instantanément
+- ✅ Identification rapide des nations sur la carte
+
+**Le simulateur Nations AI est maintenant COMPLET et FONCTIONNEL ! 🌍⚔️🤝**
+
+---
+
+**Bon jeu ! Regarde les nations se battre, s'allier et conquérir le monde ! 🚀**
