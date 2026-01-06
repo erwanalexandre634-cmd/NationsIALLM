@@ -190,6 +190,39 @@ class GameUI:
         # Bordure de la carte
         pygame.draw.rect(self.screen, self.COLOR_BORDER, self.map_rect, 2)
 
+        # Légende de la carte (en bas à gauche de la carte)
+        self._draw_map_legend()
+
+    def _draw_map_legend(self):
+        """
+        Dessine la légende de la carte (liste des nations avec couleurs et territoires).
+        """
+        # Position de la légende (en bas à gauche de la carte)
+        legend_x = self.map_rect.x
+        legend_y = self.map_rect.bottom + 10
+
+        # Titre de la légende
+        legend_title = self.font_small.render("LÉGENDE:", True, self.COLOR_TEXT)
+        self.screen.blit(legend_title, (legend_x, legend_y))
+
+        y = legend_y + 20
+
+        # Liste les nations vivantes
+        for nation in self.world.nations:
+            if nation.is_alive:
+                # Carré coloré (15x15)
+                color_rect = pygame.Rect(legend_x, y, 15, 15)
+                pygame.draw.rect(self.screen, nation.color, color_rect)
+                pygame.draw.rect(self.screen, self.COLOR_BORDER, color_rect, 1)
+
+                # Nom + nombre de territoires
+                territories = nation.get_territory_count()
+                text = f"{nation.name}: {territories} territoires"
+                label = self.font_small.render(text, True, self.COLOR_TEXT)
+                self.screen.blit(label, (legend_x + 20, y - 2))
+
+                y += 20
+
     def _draw_journal(self):
         """
         Dessine le journal des événements (à droite de la carte) avec filtres.
