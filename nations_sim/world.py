@@ -68,31 +68,62 @@ class World:
     def _place_nations_on_map(self):
         """
         Place chaque nation sur la carte avec plusieurs territoires contigus.
-        Algorithme: Place un "seed" puis fait grandir le territoire.
+
+        FIX BUG 2: Les nations sont maintenant placées en GRILLE 2x3 pour garantir
+        qu'elles sont adjacentes les unes aux autres.
+
+        Disposition:
+        +--------+--------+--------+
+        | Nation | Nation | Nation |
+        |   0    |   1    |   2    |
+        +--------+--------+--------+
+        | Nation | Nation | Nation |
+        |   3    |   4    |   5    |
+        +--------+--------+--------+
         """
-        territories_per_nation = 8  # Chaque nation commence avec environ 8 cases
+        territories_per_nation = 12  # Augmenté pour bien remplir chaque région
 
-        for nation in self.nations:
-            # Trouve une position de départ libre
-            attempts = 0
-            while attempts < 100:
-                seed_x = random.randint(0, self.width - 1)
-                seed_y = random.randint(0, self.height - 1)
+        # Définit les régions pour chaque nation (grille 2x3)
+        # Carte 20x15 divisée en 6 régions de ~7x7
+        regions = [
+            (0, 0, 7, 7),      # Nation 0: Top-left
+            (7, 0, 14, 7),     # Nation 1: Top-center
+            (14, 0, 20, 7),    # Nation 2: Top-right
+            (0, 7, 7, 15),     # Nation 3: Bottom-left
+            (7, 7, 14, 15),    # Nation 4: Bottom-center
+            (14, 7, 20, 15),   # Nation 5: Bottom-right
+        ]
 
-                if self.world_map[seed_x][seed_y] is None:
-                    # Place le premier territoire
-                    self._set_territory(seed_x, seed_y, nation)
-                    break
+        for i, nation in enumerate(self.nations):
+            if i >= len(regions):
+                break  # Sécurité si plus de 6 nations
 
-                attempts += 1
+            x_min, y_min, x_max, y_max = regions[i]
 
-            # Fait grandir le territoire
+            # Place un seed au centre de la région
+            seed_x = (x_min + x_max) // 2
+            seed_y = (y_min + y_max) // 2
+            self._set_territory(seed_x, seed_y, nation)
+
+            # Fait grandir le territoire dans la région
             for _ in range(territories_per_nation - 1):
-                # Trouve une case adjacente libre
-                new_territory = self._find_adjacent_free_cell(nation)
+                # Trouve une case adjacente libre DANS LA RÉGION
+                new_territory = self._find_adjacent_free_cell_in_region(
+                    nation, x_min, y_min, x_max, y_max
+                )
                 if new_territory:
                     x, y = new_territory
                     self._set_territory(x, y, nation)
+                else:
+                    # Si plus de place adjacente, place aléatoirement dans la région
+                    attempts = 0
+                    while attempts < 20:
+                        rand_x = random.randint(x_min, x_max - 1)
+                        rand_y = random.randint(y_min, y_max - 1)
+                        if self.world_map[rand_x][rand_y] is None:
+                            self._set_territory(rand_x, rand_y, nation)
+                            break
+                        attempts += 1
 
     def _set_territory(self, x, y, nation):
         """
@@ -129,6 +160,40 @@ class World:
             for nx, ny in neighbors:
                 # Vérifie que c'est dans les limites de la carte
                 if 0 <= nx < self.width and 0 <= ny < self.height:
+                    # Vérifie que la case est libre
+                    if self.world_map[nx][ny] is None:
+                        adjacent_cells.append((nx, ny))
+
+        # Retourne une case aléatoire parmi les adjacentes libres
+        if adjacent_cells:
+            return random.choice(adjacent_cells)
+        return None
+
+    def _find_adjacent_free_cell_in_region(self, nation, x_min, y_min, x_max, y_max):
+        """
+        Trouve une case libre adjacente aux territoires de la nation,
+        mais UNIQUEMENT dans une région définie.
+
+        Args:
+            nation (Nation): La nation dont on cherche une case adjacente
+            x_min, y_min, x_max, y_max (int): Limites de la région
+
+        Returns:
+            tuple: (x, y) ou None si aucune case libre
+        """
+        # Liste toutes les cases adjacentes aux territoires de la nation
+        adjacent_cells = []
+
+        for tx, ty in nation.territories:
+            # Les 4 voisins (haut, bas, gauche, droite)
+            neighbors = [
+                (tx - 1, ty), (tx + 1, ty),
+                (tx, ty - 1), (tx, ty + 1)
+            ]
+
+            for nx, ny in neighbors:
+                # Vérifie que c'est dans les limites de la RÉGION
+                if x_min <= nx < x_max and y_min <= ny < y_max:
                     # Vérifie que la case est libre
                     if self.world_map[nx][ny] is None:
                         adjacent_cells.append((nx, ny))

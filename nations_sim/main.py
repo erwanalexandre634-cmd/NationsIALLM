@@ -118,15 +118,22 @@ def main():
                     ui.speed = 5
                     print("⏩ Vitesse: x5")
 
-        # Si pas en pause et pas game over, avance le jeu
+        # FIX BUG 1: Appelle play_turn() À CHAQUE FRAME pour traiter les décisions
+        # (ne bloque pas car play_turn() est maintenant asynchrone)
         if not paused and not game.game_over:
             current_time = time.time()
             adjusted_delay = turn_delay / speed_multiplier
 
-            # Est-il temps de jouer un nouveau tour?
-            if current_time - last_turn_time >= adjusted_delay:
-                game.play_turn()
-                last_turn_time = current_time
+            # Vérifie si on peut commencer un nouveau tour
+            # (seulement si le tour précédent est terminé ET que le délai est écoulé)
+            if (len(game.nations_waiting) == 0 and len(game.nations_thinking) == 0):
+                # Le tour précédent est fini, vérifie le délai
+                if current_time - last_turn_time >= adjusted_delay:
+                    last_turn_time = current_time
+
+            # Appelle play_turn() pour traiter les décisions en cours
+            # (cette fonction ne bloque JAMAIS, même si les LLM réfléchissent)
+            game.play_turn()
 
         # Si game over, affiche le message
         if game.game_over:

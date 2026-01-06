@@ -24,6 +24,13 @@ def build_decision_prompt(nation, world_state, recent_event):
         str: Le prompt complet à envoyer au LLM
     """
 
+    # FIX BUG 3: Liste de TOUTES les nations existantes (pour éviter les noms inventés)
+    all_nations_list = []
+    if 'all_nations' in world_state:
+        for nation_name, nation_info in world_state['all_nations'].items():
+            all_nations_list.append(f"- {nation_name}")
+    all_nations_text = "\n".join(all_nations_list) if all_nations_list else ""
+
     # Liste des voisins
     neighbors_list = []
     for neighbor_name, neighbor_info in world_state['neighbors'].items():
@@ -53,7 +60,10 @@ Ta personnalité: {nation.personality_description}
 - Tes territoires: {nation.get_territory_count()}
 - Tour actuel: {world_state['turn']}
 
-=== TES VOISINS PROCHES ===
+=== NATIONS EXISTANTES (utilise ces noms EXACTEMENT) ===
+{all_nations_text}
+
+=== TES VOISINS PROCHES (tu ne peux attaquer QUE tes voisins) ===
 {neighbors_text}
 
 === TES RELATIONS ===
